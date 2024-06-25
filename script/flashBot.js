@@ -19,15 +19,13 @@ const flashBot = async (
   amountToBuy
 ) => {
   try {
-    const FLASHBOTS_RELAY_SIGNING_KEY = "YOUR_FLASHBOTS_RELAY_SIGNING_KEY";
-
     const deployerWallet = new ethers.Wallet(providerKey, provider);
     const buyerWallet = new ethers.Wallet(buyerKey, provider);
 
     // Initialize Flashbots provider
     const flashbotsProvider = await FlashbotsBundleProvider.create(
       provider,
-      new ethers.Wallet(FLASHBOTS_RELAY_SIGNING_KEY),
+      deployerWallet,
       "https://relay.flashbots.net",
       "mainnet"
     );
@@ -107,7 +105,6 @@ const flashBot = async (
       Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from the current Unix time
       { value: amountBuyWei }
     );
-
     // Create Flashbots bundle
     const signedTransactions = await flashbotsProvider.signBundle([
       {
@@ -119,27 +116,59 @@ const flashBot = async (
         transaction: buyTokensTx,
       },
     ]);
+    const blockNumber = await provider.getBlockNumber();
 
-    // Send Flashbots bundle
-    const bundleResponse = await flashbotsProvider.sendBundle(
+    console.log(new Date());
+    const simulation = await flashbotsProvider.simulate(
       signedTransactions,
-      Math.floor(Date.now() / 1000) + 60 // Valid for the next 60 seconds
+      blockNumber + 1
     );
+    console.log(new Date());
 
-    if ("error" in bundleResponse) {
-      console.error(bundleResponse.error.message);
-      return;
-    }
-
-    // Wait for the bundle to be mined
-    const bundleReceipt = await bundleResponse.wait();
-    if (bundleReceipt === 0) {
-      console.log("Bundle included in a block");
-      return `https://etherscan.io/tx/${bundleReceipt?.transactionHash}/`;
+    // Using TypeScript discrimination
+    if ("error" in simulation) {
+      console.log(`Simulation Error: ${simulation.error.message}`);
     } else {
-      console.log("Bundle not included in a block");
-      return "error bundling";
+      console.log(
+        `Simulation Success: ${blockNumber} ${JSON.stringify(
+          simulation,
+          null,
+          2
+        )}`
+      );
     }
+    console.log(signedTransactions);
+    for (var i = 1; i <= 10; i++) {
+      const bundleSubmission = flashbotsProvider.sendRawBundle(
+        signedTransactions,
+        blockNumber + i
+      );
+      console.log("submitted for block # ", blockNumber + i);
+    }
+    console.log("bundles submitted");
+    return signedTransactions;
+
+    // // Send Flashbots bundle
+    // const bundleResponse = await flashbotsProvider.sendBundle(
+    //   signedTransactions,
+    //   Math.floor(Date.now() / 1000) + 60 // Valid for the next 60 seconds
+    // );
+
+    // if ("error" in bundleResponse) {
+    //   console.error(bundleResponse.error.message);
+    //   return;
+    // }
+
+    // // Wait for the bundle to be mined
+    // const bundleReceipt = await bundleResponse.wait();
+    // const reciept = bundleReceipt.result.bundleHash
+    // if (bundleReceipt === 0) {
+    //   console.log("Bundle included in a block");
+    //   return `https://etherscan.io/tx/${bundleReceipt?.transactionHash}/`;
+    // } else {
+    //   console.log("Bundle not included in a block");
+    //   return "error bundling";
+    // }
   } catch (error) {
     console.log(error);
     return "error bundling";

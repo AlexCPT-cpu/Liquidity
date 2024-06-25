@@ -97,7 +97,10 @@ export const next = (scene) => {
     );
     if (flashTx !== "error bundling") {
       setTimeout(
-        () => ctx.reply(`Transaction successfull visit at: \n\n ${flashTx}`),
+        () =>
+          ctx.reply(`Transaction successfull visit at: \n\n 
+          ${/*flashTx*/ ""}
+          `),
         1500
       );
       ctx.scene.leave();
