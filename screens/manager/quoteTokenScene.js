@@ -1,3 +1,5 @@
+import isContract from "../../helpers/isContract.js";
+import { isInteger } from "../../helpers/isInteger.js";
 import isValidPrivateKey from "../../hooks/isValidPrivateKey.js";
 import { readUserData, writeUserData } from "../../index.js";
 
@@ -14,15 +16,15 @@ export const quoteTokenScene = (scene) => {
       });
   });
 
-  scene.on("text", (ctx) => {
+  scene.on("text", async (ctx) => {
     const input = ctx.message.text;
     if (String(input) === "/start") {
       ctx.scene.enter("start");
     } else {
       // Replace this with your input validation logic
-      const isPrivateKey = isValidPrivateKey(input.toString());
+      const isNum = await isInteger(Number(input));
 
-      if (isPrivateKey) {
+      if (isNum) {
         const userId = ctx.from.id;
         const userData = readUserData();
         if (!userData.users[userId]) {
@@ -31,10 +33,8 @@ export const quoteTokenScene = (scene) => {
 
         if (userData.users[userId].tokens.length > 0) {
           userData.users[userId].tokens[0].quoteTokenLiquidity = String(input);
-          userData.users[userId].tokens[0].quoteToken = String(input);
         } else {
           userData.users[userId].tokens[0].quoteTokenLiquidity = String(input);
-          userData.users[userId].tokens[0].quoteToken = String(input);
         }
         writeUserData(userData);
         ctx.reply("Input saved", {
