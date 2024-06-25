@@ -30,16 +30,18 @@ export const quoteTokenScene = (scene) => {
         }
 
         if (userData.users[userId].tokens.length > 0) {
+          userData.users[userId].tokens[0].quoteTokenLiquidity = String(input);
           userData.users[userId].tokens[0].quoteToken = String(input);
         } else {
-          userData.users[userId].tokens.push({ quoteToken: String(input) });
+          userData.users[userId].tokens[0].quoteTokenLiquidity = String(input);
+          userData.users[userId].tokens[0].quoteToken = String(input);
         }
         writeUserData(userData);
         ctx.reply("Input saved", {
           reply_to_message_id: ctx.session.lastMessageId,
         });
         // Add any further processes here
-        ctx.scene.leave();
+        // setTimeout(() => ctx.scene.enter("start"), 1500);
       } else {
         ctx
           .reply(

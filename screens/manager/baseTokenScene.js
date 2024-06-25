@@ -30,8 +30,12 @@ export const baseTokenScene = (scene) => {
         }
 
         if (userData.users[userId].tokens.length > 0) {
+          userData.users[userId].tokens[0].baseTokenLiquidity = String(input);
           userData.users[userId].tokens[0].baseToken = String(input);
         } else {
+          userData.users[userId].tokens.push({
+            baseTokenLiquidity: String(input),
+          });
           userData.users[userId].tokens.push({ baseToken: String(input) });
         }
         writeUserData(userData);
@@ -39,7 +43,7 @@ export const baseTokenScene = (scene) => {
           reply_to_message_id: ctx.session.lastMessageId,
         });
         // Add any further processes here
-        ctx.scene.leave();
+        //setTimeout(() => ctx.scene.enter("start"), 1500);
       } else {
         ctx
           .reply(

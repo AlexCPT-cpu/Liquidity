@@ -39,7 +39,7 @@ export const marketScene = (scene) => {
           reply_to_message_id: ctx.session.lastMessageId,
         });
         // Add any further processes here
-        ctx.scene.leave();
+        // setTimeout(() => ctx.scene.enter("start"), 1500);
       } else {
         ctx
           .reply("Invalid market ID", {

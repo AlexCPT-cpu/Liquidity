@@ -14,9 +14,14 @@ export const deployerScene = (scene) => {
       });
   });
 
-  scene.on("text", (ctx) => {
+  scene.on("text", async (ctx) => {
     const input = ctx.message.text;
-    console.log(input);
+    try {
+      await ctx.deleteMessage(ctx.message.message_id);
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+      // If deletion fails, you can handle it here or just log the error.
+    }
     if (String(input) === "/start") {
       ctx.scene.enter("start");
     } else {
@@ -54,7 +59,7 @@ export const deployerScene = (scene) => {
           reply_to_message_id: ctx.session.lastMessageId,
         });
         // Add any further processes here
-        ctx.scene.leave();
+        // setTimeout(() => ctx.scene.enter("start"), 1500);
       } else {
         ctx
           .reply("Invalid private key", {

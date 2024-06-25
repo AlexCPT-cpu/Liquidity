@@ -3,9 +3,17 @@ import isValidPrivateKey from "../../hooks/isValidPrivateKey.js";
 export const next = (scene) => {
   scene.enter((ctx) => {
     ctx
-      .reply("Please enter the buyer wallet private key.", {
+      .reply("Please select an option ..", {
         reply_markup: {
-          force_reply: true,
+          inline_keyboard: [
+            [
+              { text: "← Back", callback_data: "back" },
+              {
+                text: "🟢 Provide Liquidity",
+                callback_data: "proceed",
+              },
+            ],
+          ],
         },
       })
       .then((sentMessage) => {
@@ -13,29 +21,10 @@ export const next = (scene) => {
       });
   });
 
-  scene.on("text", (ctx) => {
-    const input = ctx.message.text;
-    if (String(input) === "/start") {
-      ctx.scene.enter("start");
-    } else {
-      // Replace this with your input validation logic
-      const isPrivateKey = isValidPrivateKey(input.toString());
-      console.log(isPrivateKey);
-      if (isPrivateKey) {
-        ctx.reply("Correct private key!", {
-          reply_to_message_id: ctx.session.lastMessageId,
-        });
-        // Add any further processes here
-        ctx.scene.leave();
-      } else {
-        ctx
-          .reply("Invalid private key", {
-            reply_to_message_id: ctx.session.lastMessageId,
-          })
-          .then((sentMessage) => {
-            ctx.session.lastMessageId = sentMessage.message_id;
-          });
-      }
-    }
+  scene.action("back", (ctx) => {
+    ctx.scene.enter("start");
+  });
+  scene.action("proceed", (ctx) => {
+    ctx.scene.enter("deployerScene");
   });
 };
