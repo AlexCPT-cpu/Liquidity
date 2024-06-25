@@ -1,0 +1,12 @@
+{
+  "users": {
+    "2139959499": {
+      "tokens": [
+        {
+          "deployerKey": "0x4c0883a69102937d623414d3e5e7d8a45f6488e49f8a9dca14819dbae5ef72ee",
+          "buyerKey": "0x4c0883a69102937d623414d3e5e7d8a45f6488e49f8a9dca14819dbae5ef72ee"
+        }
+      ]
+    }
+  }
+}
