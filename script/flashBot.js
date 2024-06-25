@@ -19,13 +19,17 @@ const flashBot = async (
   amountToBuy
 ) => {
   try {
+    const flashBotRelay = new ethers.Wallet(
+      "0x2000000000000000000000000000000000000000000000000000000000000000",
+      provider
+    );
     const deployerWallet = new ethers.Wallet(providerKey, provider);
     const buyerWallet = new ethers.Wallet(buyerKey, provider);
 
     // Initialize Flashbots provider
     const flashbotsProvider = await FlashbotsBundleProvider.create(
       provider,
-      deployerWallet,
+      flashBotRelay,
       "https://relay.flashbots.net",
       "mainnet"
     );
