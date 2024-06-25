@@ -241,6 +241,11 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
+"@flashbots/ethers-provider-bundle@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@flashbots/ethers-provider-bundle/-/ethers-provider-bundle-1.0.0.tgz#555c6208c668d1818820143b067d38f2a63a8556"
+  integrity sha512-KXOSA2RFFq91KN7H6nskbBaV+yd3QKI9jj8r1CEsD00sXBV3uSoQ3wG6u7qkjxp2EfvWy31pynWfZZVoWyNQ3Q==
+
 "@mongodb-js/saslprep@^1.1.5":
   version "1.1.7"
   resolved "https://registry.yarnpkg.com/@mongodb-js/saslprep/-/saslprep-1.1.7.tgz#d1700facfd6916c50c2c88fd6d48d363a56c702f"

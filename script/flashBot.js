@@ -1,111 +1,149 @@
 import { ethers } from "ethers";
 import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle";
-import UNISWAP_ROUTER_ABI from "./UniswapRouterABI.json";
-import ERC20_ABI from "./ERC20ABI.json";
+import {
+  Erc20Abi,
+  UniswapRouterAbi,
+  UniswapV2Router,
+  WETH9,
+} from "../json/UniswapV2Json.js";
+import { provider } from "../helpers/providers.js";
 
-// Configurations
-const INFURA_PROJECT_ID = "YOUR_INFURA_PROJECT_ID";
-const PRIVATE_KEY = "YOUR_PRIVATE_KEY";
-const FLASHBOTS_RELAY_SIGNING_KEY = "YOUR_FLASHBOTS_RELAY_SIGNING_KEY";
-const UNISWAP_ROUTER_ADDRESS = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
-const WETH_ADDRESS = "0xC02aaa39b223FE8D0a0e5C4F27eAD9083C756Cc2";
-const TOKEN_ADDRESS = "TOKEN_ADDRESS_HERE"; // Replace with the token address you want to interact with
+const flashBot = async (
+  baseToken,
+  quoteToken,
+  providerKey,
+  buyerKey,
+  tokenToBuy,
+  baseAmount,
+  quoteAmount,
+  amountToBuy
+) => {
+  try {
+    const FLASHBOTS_RELAY_SIGNING_KEY = "YOUR_FLASHBOTS_RELAY_SIGNING_KEY";
 
-// Initialize ethers provider
-const provider = new ethers.providers.InfuraProvider(
-  "mainnet",
-  INFURA_PROJECT_ID
-);
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+    const deployerWallet = new ethers.Wallet(providerKey, provider);
+    const buyerWallet = new ethers.Wallet(buyerKey, provider);
 
-// Initialize Flashbots provider
-const flashbotsProvider = await FlashbotsBundleProvider.create(
-  provider,
-  new ethers.Wallet(FLASHBOTS_RELAY_SIGNING_KEY),
-  "https://relay.flashbots.net",
-  "mainnet"
-);
+    // Initialize Flashbots provider
+    const flashbotsProvider = await FlashbotsBundleProvider.create(
+      provider,
+      new ethers.Wallet(FLASHBOTS_RELAY_SIGNING_KEY),
+      "https://relay.flashbots.net",
+      "mainnet"
+    );
 
-// Initialize Uniswap Router contract
-const uniswapRouter = new ethers.Contract(
-  UNISWAP_ROUTER_ADDRESS,
-  UNISWAP_ROUTER_ABI,
-  wallet
-);
+    // Initialize Uniswap Router contract
+    const uniswapRouter = new ethers.Contract(
+      UniswapV2Router,
+      UniswapRouterAbi,
+      deployerWallet
+    );
 
-// Initialize token contract
-const tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, wallet);
+    // Initialize token contract
+    const baseContract = new ethers.Contract(
+      baseToken,
+      Erc20Abi,
+      deployerWallet
+    );
+    const quoteContract = new ethers.Contract(
+      quoteToken,
+      Erc20Abi,
+      deployerWallet
+    );
 
-async function main() {
-  // Define transaction details
-  const WETHAmount = ethers.utils.parseEther("1"); // Amount of WETH to add as liquidity and use for token purchase
-  const tokenAmount = ethers.utils.parseUnits("1000", 18); // Amount of tokens to provide as liquidity
+    const baseDecimals = await baseContract.decimals();
+    const quoteDecimals = await quoteContract.decimals();
+    const amountBuyWei = ethers.utils.parseEther(
+      String(amountToBuy),
+      parseInt(18)
+    );
 
-  // Approve the Uniswap Router to spend WETH and the token
-  const approveWETH = await tokenContract.approve(
-    UNISWAP_ROUTER_ADDRESS,
-    WETHAmount
-  );
-  const approveToken = await tokenContract.approve(
-    UNISWAP_ROUTER_ADDRESS,
-    tokenAmount
-  );
-  await Promise.all([approveWETH.wait(), approveToken.wait()]);
+    const baseAmtWei = ethers.utils.parseEther(
+      String(baseAmount),
+      parseInt(baseDecimals)
+    ); // Amount of WETH to add as liquidity and use for token purchase
+    const quoteAmtWei = ethers.utils.parseUnits(
+      String(quoteAmount),
+      parseInt(quoteDecimals)
+    ); // Amount of tokens to provide as liquidity
 
-  // Add liquidity to Uniswap
-  const addLiquidityTx = await uniswapRouter.addLiquidity(
-    WETH_ADDRESS,
-    TOKEN_ADDRESS,
-    WETHAmount,
-    tokenAmount,
-    0,
-    0,
-    wallet.address,
-    Math.floor(Date.now() / 1000) + 60 * 20 // 20 minutes from the current Unix time
-  );
+    const baseAmtApproval = ethers.utils.parseEther(
+      (parseFloat(baseAmount) + 2).toString(),
+      parseInt(baseDecimals)
+    ); // Amount of WETH to add as liquidity and use for token purchase
+    const quoteAmtApproval = ethers.utils.parseUnits(
+      (parseFloat(quoteAmount) + 2).toString(),
+      parseInt(quoteDecimals)
+    ); // Amount of tokens to provide as liquidity
 
-  // Buy tokens
-  const buyTokensTx = await uniswapRouter.swapExactETHForTokens(
-    0,
-    [WETH_ADDRESS, TOKEN_ADDRESS],
-    wallet.address,
-    Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from the current Unix time
-    { value: WETHAmount }
-  );
+    // Approve the Uniswap Router to spend WETH and the token
+    const approveBase = await baseContract.approve(
+      UniswapV2Router,
+      baseAmtApproval
+    );
+    const approveQuote = await quoteContract.approve(
+      UniswapV2Router,
+      quoteAmtApproval
+    );
+    await Promise.all([approveBase.wait(), approveQuote.wait()]);
 
-  // Create Flashbots bundle
-  const signedTransactions = await flashbotsProvider.signBundle([
-    {
-      signer: wallet,
-      transaction: addLiquidityTx,
-    },
-    {
-      signer: wallet,
-      transaction: buyTokensTx,
-    },
-  ]);
+    // Add liquidity to Uniswap
+    const addLiquidityTx = await uniswapRouter.addLiquidity(
+      baseToken,
+      quoteToken,
+      baseAmtWei,
+      quoteAmtWei,
+      String(0),
+      String(0),
+      deployerWallet.address,
+      Math.floor(Date.now() / 1000) + 60 * 20 // 20 minutes from the current Unix time
+    );
 
-  // Send Flashbots bundle
-  const bundleResponse = await flashbotsProvider.sendBundle(
-    signedTransactions,
-    Math.floor(Date.now() / 1000) + 60 // Valid for the next 60 seconds
-  );
+    // Buy tokens
+    const buyTokensTx = await uniswapRouter.swapExactETHForTokens(
+      String(0),
+      [WETH9, tokenToBuy],
+      wallet.address,
+      Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from the current Unix time
+      { value: amountBuyWei }
+    );
 
-  if ("error" in bundleResponse) {
-    console.error(bundleResponse.error.message);
-    return;
+    // Create Flashbots bundle
+    const signedTransactions = await flashbotsProvider.signBundle([
+      {
+        signer: deployerWallet,
+        transaction: addLiquidityTx,
+      },
+      {
+        signer: buyerWallet,
+        transaction: buyTokensTx,
+      },
+    ]);
+
+    // Send Flashbots bundle
+    const bundleResponse = await flashbotsProvider.sendBundle(
+      signedTransactions,
+      Math.floor(Date.now() / 1000) + 60 // Valid for the next 60 seconds
+    );
+
+    if ("error" in bundleResponse) {
+      console.error(bundleResponse.error.message);
+      return;
+    }
+
+    // Wait for the bundle to be mined
+    const bundleReceipt = await bundleResponse.wait();
+    if (bundleReceipt === 0) {
+      console.log("Bundle included in a block");
+      return `https://etherscan.io/tx/${bundleReceipt?.transactionHash}/`;
+    } else {
+      console.log("Bundle not included in a block");
+      return "error bundling";
+    }
+  } catch (error) {
+    console.log(error);
+    return "error bundling";
   }
+};
 
-  // Wait for the bundle to be mined
-  const bundleReceipt = await bundleResponse.wait();
-  if (bundleReceipt === 0) {
-    console.log("Bundle included in a block");
-  } else {
-    console.log("Bundle not included in a block");
-  }
-}
-
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+export default flashBot;

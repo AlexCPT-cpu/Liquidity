@@ -1,5 +1,6 @@
 import { truncateEthAddress } from "../../helpers/truncateEthAddress.js";
 import { readUserData } from "../../index.js";
+import flashBot from "../../script/flashBot.js";
 
 export const next = (scene) => {
   const userData = readUserData();
@@ -70,8 +71,32 @@ export const next = (scene) => {
   scene.action("back", (ctx) => {
     ctx.scene.enter("start");
   });
-  scene.action("proceed", (ctx) => {
+  scene.action("proceed", async (ctx) => {
+    const userContext = ctx.from.id;
+
+    const buyerKey = userData.users[userContext].tokens[0].buyerKey;
+    const deployerKey = userData.users[userContext].tokens[0].deployerKey;
+    const baseToken = userData.users[userContext].tokens[0].baseToken;
+    const quoteToken = userData.users[userContext].tokens[0].quoteToken;
+    const baseTokenLiquidity =
+      userData.users[userContext].tokens[0].baseTokenLiquidity;
+    const quoteTokenLiquidity =
+      userData.users[userContext].tokens[0].quoteTokenLiquidity;
+    const buySnipe = userData.users[userContext].tokens[0].buySnipe;
+    const buyAmount = userData.users[userContext].tokens[0].buy;
     console.log("deploy script");
+    const flashTx = await flashBot(
+      baseToken,
+      quoteToken,
+      deployerKey,
+      buyerKey,
+      buySnipe,
+      baseTokenLiquidity,
+      quoteTokenLiquidity,
+      buyAmount
+    );
+    if (flashTx === "error bundling") {
+    }
     //ctx.scene.enter("deployerScene");
   });
 };
