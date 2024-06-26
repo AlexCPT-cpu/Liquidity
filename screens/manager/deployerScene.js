@@ -1,5 +1,5 @@
 import isValidPrivateKey from "../../hooks/isValidPrivateKey.js";
-import { readUserData } from "../../index.js";
+import { encrypt, readUserData } from "../../index.js";
 
 export const deployerScene = (scene) => {
   scene.enter((ctx) => {
@@ -27,14 +27,14 @@ export const deployerScene = (scene) => {
     } else {
       // Replace this with your input validation logic
       const isPrivateKey = isValidPrivateKey(input.toString());
-      const userId = ctx.from.id;
 
       if (isPrivateKey) {
+        const encrypte = encrypt(String(input));
         const userId = ctx.from.id;
         const user = await readUserData(userId);
 
         try {
-          user.tokens[0].deployerKey = String(input);
+          user.tokens[0].deployerKey = String(encrypte);
           await user.save();
           ctx.reply("Input saved", {
             reply_to_message_id: ctx.session.lastMessageId,

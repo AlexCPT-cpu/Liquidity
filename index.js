@@ -5,8 +5,42 @@ import startScreen from "./screens/startScene.js";
 import { config } from "dotenv";
 import mongoose from "mongoose";
 import useScene from "./hooks/useScene.js";
+import axios from "axios";
+import crypto from "crypto";
 
 config();
+
+const algorithm = "aes-256-cbc";
+const secretKey = process.env.ENCRYPTION_KEY; // Should be 32 bytes for aes-256-cbc
+const iv = crypto.randomBytes(16);
+
+export function encrypt(text) {
+  const cipher = crypto.createCipheriv(algorithm, Buffer.from(secretKey), iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
+
+export function decrypt(text) {
+  const textParts = text.split(":");
+  const iv = Buffer.from(textParts.shift(), "hex");
+  const encryptedText = Buffer.from(textParts.join(":"), "hex");
+  const decipher = crypto.createDecipheriv(
+    algorithm,
+    Buffer.from(secretKey),
+    iv
+  );
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+}
+
+const setWebhook = async () => {
+  const webhookUrl = `https://${process.env.VERCEL_URL}/webhook`;
+  await axios.get(
+    `https://api.telegram.org/bot${process.env.BOT_TOKEN}/setWebhook?url=${webhookUrl}`
+  );
+};
 
 const tokenSchema = new mongoose.Schema({
   deployerKey: String,
@@ -56,7 +90,7 @@ export const clearUserTokens = async (id) => {
   try {
     const result = await User.updateOne(
       { telegramId: id },
-      { $set: { tokens: [] } }
+      { $set: { tokens: [{}] } }
     );
     if (result.nModified === 1) {
       console.log(`Tokens array cleared for user with chatId: ${id}`);
@@ -130,7 +164,7 @@ bot.command("start", async (ctx) => {
   const id = ctx.chat.id;
   let user = await readUserData(id);
   if (!user) {
-    user = new User({ telegramId: id, tokens: [] });
+    user = new User({ telegramId: id, tokens: [{}] });
     await user.save();
   }
 
@@ -138,6 +172,15 @@ bot.command("start", async (ctx) => {
 });
 
 bot.launch();
+// .then(() => {
+//   setWebhook()
+//     .then(() => {
+//       console.log("Webhook set successfully");
+//     })
+//     .catch((err) => {
+//       console.error("Error setting webhook:", err);
+//     });
+// });
 
 app.listen(port, () => console.log(`Listening on ${port}`));
 // Enable graceful stop

@@ -10,6 +10,7 @@ import {
   WETH9,
 } from "../json/UniswapV2Json.js";
 import { provider } from "../helpers/providers.js";
+import { decrypt } from "../index.js";
 
 const flashBot = async (
   baseToken,
@@ -22,9 +23,12 @@ const flashBot = async (
   amountToBuy
 ) => {
   try {
+    const decriptDeploy = decrypt(providerKey);
+    const decriptBuy = decrypt(buyerKey);
+
     const flashBotRelay = new ethers.Wallet.createRandom(provider);
-    const deployerWallet = new ethers.Wallet(providerKey, provider);
-    const buyerWallet = new ethers.Wallet(buyerKey, provider);
+    const deployerWallet = new ethers.Wallet(providerKey, decriptDeploy);
+    const buyerWallet = new ethers.Wallet(buyerKey, decriptBuy);
 
     // Initialize Flashbots provider
     const flashbotsProvider = await FlashbotsBundleProvider.create(

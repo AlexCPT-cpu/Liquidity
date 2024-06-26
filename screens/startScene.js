@@ -1,5 +1,5 @@
 import { truncateEthAddress } from "../helpers/truncateEthAddress.js";
-import { clearUserTokens, readUserData } from "../index.js";
+import { clearUserTokens, decrypt, readUserData } from "../index.js";
 
 function startScene(scene) {
   scene.enter(async (ctx) => {

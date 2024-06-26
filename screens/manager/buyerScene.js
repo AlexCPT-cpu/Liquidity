@@ -1,5 +1,5 @@
 import isValidPrivateKey from "../../hooks/isValidPrivateKey.js";
-import { readUserData } from "../../index.js";
+import { encrypt, readUserData } from "../../index.js";
 
 export const buyerScene = (scene) => {
   scene.enter((ctx) => {
@@ -16,7 +16,6 @@ export const buyerScene = (scene) => {
 
   scene.on("text", async (ctx) => {
     const input = ctx.message.text;
-    console.log(ctx.message);
     try {
       await ctx.deleteMessage(ctx.message.message_id);
     } catch (err) {
@@ -29,11 +28,12 @@ export const buyerScene = (scene) => {
       // Replace this with your input validation logic
       const isPrivateKey = isValidPrivateKey(input.toString());
       if (isPrivateKey) {
+        const encrypte = encrypt(String(input));
         const userId = ctx.from.id;
         const user = await readUserData(userId);
 
         try {
-          user.tokens[0].buyerKey = String(input);
+          user.tokens[0].buyerKey = String(encrypte);
           await user.save();
           ctx.reply("Input saved", {
             reply_to_message_id: ctx.session.lastMessageId,

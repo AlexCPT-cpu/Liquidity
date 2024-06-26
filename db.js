@@ -26,4 +26,3 @@ async function run() {
   }
 }
 run().catch(console.dir);
-//mongodb+srv://aodey37:6bvtYFI0mjBYpcv5@cluster0.uzxg1gw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
