@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-export const provider = new ethers.InfuraProvider(
+export const provider = new ethers.AlchemyProvider(
   "mainnet",
-  process.env.INFURA_ID
+  process.env.ALCHEMY_ID
 );

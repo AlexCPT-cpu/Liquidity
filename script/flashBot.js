@@ -1,5 +1,8 @@
 import { ethers } from "ethers";
-import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle";
+import {
+  FlashbotsBundleProvider,
+  FlashbotsBundleResolution,
+} from "@flashbots/ethers-provider-bundle";
 import {
   Erc20Abi,
   UniswapRouterAbi,
@@ -7,6 +10,7 @@ import {
   WETH9,
 } from "../json/UniswapV2Json.js";
 import { provider } from "../helpers/providers.js";
+import { error } from "console";
 
 const flashBot = async (
   baseToken,
@@ -19,10 +23,7 @@ const flashBot = async (
   amountToBuy
 ) => {
   try {
-    const flashBotRelay = new ethers.Wallet(
-      "0x2000000000000000000000000000000000000000000000000000000000000000",
-      provider
-    );
+    const flashBotRelay = new ethers.Wallet.createRandom(provider);
     const deployerWallet = new ethers.Wallet(providerKey, provider);
     const buyerWallet = new ethers.Wallet(buyerKey, provider);
 
@@ -132,6 +133,7 @@ const flashBot = async (
     // Using TypeScript discrimination
     if ("error" in simulation) {
       console.log(`Simulation Error: ${simulation.error.message}`);
+      console.log(simulation);
     } else {
       console.log(
         `Simulation Success: ${blockNumber} ${JSON.stringify(
@@ -141,16 +143,31 @@ const flashBot = async (
         )}`
       );
     }
-    console.log(signedTransactions);
-    for (var i = 1; i <= 10; i++) {
-      const bundleSubmission = flashbotsProvider.sendRawBundle(
-        signedTransactions,
-        blockNumber + i
-      );
-      console.log("submitted for block # ", blockNumber + i);
-    }
+
+    const bundleSubmission = await flashbotsProvider.sendRawBundle(
+      signedTransactions,
+      blockNumber + 1
+    );
     console.log("bundles submitted");
-    return signedTransactions;
+    if ("error" in bundleSubmission) {
+      throw new Error(bundleSubmission.error.message);
+    }
+    const bundleResolution = await bundleSubmission.wait();
+    if (bundleResolution === FlashbotsBundleResolution.BundleIncluded) {
+      console.log(`Congrats, included in ${blockNumber + 1}`);
+      console.log(`${JSON.stringify(simulation, null, 2)}`);
+      return simulation;
+    } else if (
+      bundleResolution === FlashbotsBundleResolution.BlockPassedWithoutInclusion
+    ) {
+      console.log(`Not included in ${blockNumber + 1}`);
+      return `Not included in ${blockNumber + 1}`;
+    } else if (
+      bundleResolution === FlashbotsBundleResolution.AccountNonceTooHigh
+    ) {
+      console.log(`Nonce too high, bailing`);
+      return `Nonce too high, bailing`;
+    }
 
     // // Send Flashbots bundle
     // const bundleResponse = await flashbotsProvider.sendBundle(
