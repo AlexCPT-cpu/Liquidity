@@ -1,49 +1,35 @@
 import { truncateEthAddress } from "../helpers/truncateEthAddress.js";
-import { readUserData, writeUserData } from "../index.js";
+import { clearUserTokens, readUserData } from "../index.js";
 
 function startScene(scene) {
-  const userData = readUserData();
-
   scene.enter(async (ctx) => {
-    const user = userData.users[ctx.from.id];
-
+    const userContext = await readUserData(ctx.from.id);
+    const user = userContext.tokens[0];
     ctx.reply(
       `Please provide all the required information.\n\n${
-        user.tokens[0].deployerKey ? "✅" : "📦"
-      } <b>Deployer wallet: ${
-        user.tokens[0].deployerKey ? "Provided" : ""
-      }</b> \n${user.tokens[0].buyerKey ? "✅" : "📦"} <b>Buyer wallet: ${
-        user.tokens[0].deployerKey ? "Provided" : ""
-      }</b> \n\n${user.tokens[0].market ? "✅" : "📦"} <b>Market ID: ${
-        user.tokens[0].market
-          ? truncateEthAddress(String(user.tokens[0].market))
-          : ""
-      }</b> \n${user.tokens[0].baseToken ? "✅" : "📦"} <b>Base token: ${
-        user.tokens[0].baseToken
-          ? truncateEthAddress(String(user.tokens[0].baseToken))
-          : ""
-      }</b>  \n${user.tokens[0].quoteToken ? "✅" : "📦"} <b>Quote token: ${
-        user.tokens[0].quoteToken
-          ? truncateEthAddress(String(user.tokens[0].quoteToken))
-          : ""
+        user?.deployerKey ? "✅" : "📦"
+      } <b>Deployer wallet: ${user?.deployerKey ? "Provided" : ""}</b> \n${
+        user?.buyerKey ? "✅" : "📦"
+      } <b>Buyer wallet: ${user?.deployerKey ? "Provided" : ""}</b> \n\n${
+        user?.market ? "✅" : "📦"
+      } <b>Market ID: ${
+        user?.market ? truncateEthAddress(String(user?.market)) : ""
+      }</b> \n${user?.baseToken ? "✅" : "📦"} <b>Base token: ${
+        user?.baseToken ? truncateEthAddress(String(user?.baseToken)) : ""
+      }</b>  \n${user?.quoteToken ? "✅" : "📦"} <b>Quote token: ${
+        user?.quoteToken ? truncateEthAddress(String(user?.quoteToken)) : ""
       }</b>  \n${
-        user.tokens[0].baseTokenLiquidity ? "✅" : "📦"
+        user?.baseTokenLiquidity ? "✅" : "📦"
       } <b>Initial base token liquidity: ${
-        user.tokens[0].baseTokenLiquidity
-          ? user.tokens[0].baseTokenLiquidity
-          : ""
+        user?.baseTokenLiquidity ? user?.baseTokenLiquidity : ""
       }</b> \n${
-        user.tokens[0].quoteTokenLiquidity ? "✅" : "📦"
+        user?.quoteTokenLiquidity ? "✅" : "📦"
       } <b>Initial quote token liquidity: ${
-        user.tokens[0].quoteTokenLiquidity
-          ? user.tokens[0].quoteTokenLiquidity
-          : ""
-      }</b> \n${user.tokens[0].buySnipe ? "✅" : "📦"} <b>Token to buy/snipe: ${
-        user.tokens[0].buySnipe
-          ? truncateEthAddress(String(user.tokens[0].buySnipe))
-          : ""
-      }</b>  \n${user.tokens[0].buy ? "✅" : "📦"}  <b>Buy amount: ${
-        user.tokens[0].buy ? user.tokens[0].buy : ""
+        user?.quoteTokenLiquidity ? user?.quoteTokenLiquidity : ""
+      }</b> \n${user?.buySnipe ? "✅" : "📦"} <b>Token to buy/snipe: ${
+        user?.buySnipe ? truncateEthAddress(String(user?.buySnipe)) : ""
+      }</b>  \n${user?.buy ? "✅" : "📦"}  <b>Buy amount: ${
+        user?.buy ? user?.buy : ""
       } </b>`,
       {
         reply_markup: {
@@ -114,25 +100,24 @@ function startScene(scene) {
   scene.action("buyamt", (ctx) => {
     ctx.scene.enter("buyScene");
   });
-  scene.action("reset", (ctx) => {
-    userData.users[userContext].tokens = [{}];
-    writeUserData(userData);
+  scene.action("reset", async (ctx) => {
+    const reset = await clearUserTokens(ctx.from.id);
+    setTimeout(() => ctx.reply("Data reset please restart the bot"), 1200);
     //ctx.scene.reenter(); //enter("start");
   });
-  scene.action("next", (ctx) => {
-    const userContext = ctx.from.id;
-    if (userContext) {
-      const buyerKey = userData.users[userContext].tokens[0].buyerKey;
-      const deployerKey = userData.users[userContext].tokens[0].deployerKey;
-      const market = userData.users[userContext].tokens[0].market;
-      const baseToken = userData.users[userContext].tokens[0].baseToken;
-      const quoteToken = userData.users[userContext].tokens[0].quoteToken;
-      const baseTokenLiquidity =
-        userData.users[userContext].tokens[0].baseTokenLiquidity;
-      const quoteTokenLiquidity =
-        userData.users[userContext].tokens[0].quoteTokenLiquidity;
-      const buySnipe = userData.users[userContext].tokens[0].buySnipe;
-      const buyAmount = userData.users[userContext].tokens[0].buy;
+  scene.action("next", async (ctx) => {
+    const userContext = await readUserData(ctx.from.id);
+    const userData = userContext?.tokens[0];
+    if (userData) {
+      const buyerKey = userData?.buyerKey;
+      const deployerKey = userData?.deployerKey;
+      const market = userData?.market;
+      const baseToken = userData?.baseToken;
+      const quoteToken = userData?.quoteToken;
+      const baseTokenLiquidity = userData?.baseTokenLiquidity;
+      const quoteTokenLiquidity = userData?.quoteTokenLiquidity;
+      const buySnipe = userData?.buySnipe;
+      const buyAmount = userData?.buy;
 
       if (
         buyerKey &&
@@ -146,11 +131,12 @@ function startScene(scene) {
         buyAmount
       ) {
         ctx.scene.enter("nextScene");
+      } else {
+        ctx.reply("Please provide all the required information.");
       }
     } else {
       ctx.reply("Please provide all the required information.");
     }
-    //ctx.scene.enter("nextScene");
   });
 }
 

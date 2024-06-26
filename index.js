@@ -1,16 +1,42 @@
 import { Telegraf, Scenes, session } from "telegraf";
-import fs from "fs";
 import express from "express";
 import path from "path";
 import startScreen from "./screens/startScene.js";
 import { config } from "dotenv";
+import mongoose from "mongoose";
 import useScene from "./hooks/useScene.js";
 
+config();
+
+const tokenSchema = new mongoose.Schema({
+  deployerKey: String,
+  buyerKey: String,
+  market: String,
+  baseToken: String,
+  quoteToken: String,
+  baseTokenLiquidity: String,
+  quoteTokenLiquidity: String,
+  buy: String,
+  buySnipe: String,
+});
+
+const userSchema = new mongoose.Schema({
+  telegramId: { type: String, unique: true },
+  tokens: [tokenSchema],
+});
+
+export const User = mongoose.model("User", userSchema);
+
+mongoose
+  .connect(process.env.MONGO_URL)
+  .then(() => console.log("MongoDB connected successfully"))
+  .catch((err) => console.error("MongoDB connection error:", err));
+
 // Read user data from JSON file
-export const readUserData = () => {
+export const readUserData = async (id) => {
   try {
-    const data = fs.readFileSync("data.json", "utf8");
-    return JSON.parse(data);
+    let user = await User.findOne({ telegramId: id });
+    return user;
   } catch (err) {
     console.error("Error reading userData.json:", err);
     return { users: {} };
@@ -18,11 +44,27 @@ export const readUserData = () => {
 };
 
 // Write user data to JSON file
-export const writeUserData = (data) => {
+export const writeUserData = async (user) => {
   try {
-    fs.writeFileSync("data.json", JSON.stringify(data, null, 2));
+    await user.save();
   } catch (err) {
     console.error("Error writing to userData.json:", err);
+  }
+};
+
+export const clearUserTokens = async (id) => {
+  try {
+    const result = await User.updateOne(
+      { telegramId: id },
+      { $set: { tokens: [] } }
+    );
+    if (result.nModified === 1) {
+      console.log(`Tokens array cleared for user with chatId: ${id}`);
+    } else {
+      console.log(`No tokens array found for user with chatId: ${id}`);
+    }
+  } catch (error) {
+    console.error("Error clearing tokens array:", error);
   }
 };
 
@@ -33,7 +75,6 @@ app.use(express.static("static"));
 app.use(express.json());
 
 // Load the environment variables from the '.env' file
-config();
 
 const token = process.env.BOT_TOKEN;
 const bot = new Telegraf(token);
@@ -85,8 +126,14 @@ bot.use(session());
 bot.use(stage.middleware());
 
 // Command to start the conversation
-bot.command("start", (ctx) => {
-  console.log(ctx.chat.id);
+bot.command("start", async (ctx) => {
+  const id = ctx.chat.id;
+  let user = await readUserData(id);
+  if (!user) {
+    user = new User({ telegramId: id, tokens: [] });
+    await user.save();
+  }
+
   ctx.scene.enter("start");
 });
 

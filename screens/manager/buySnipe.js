@@ -1,6 +1,5 @@
 import isContract from "../../helpers/isContract.js";
-import isValidPrivateKey from "../../hooks/isValidPrivateKey.js";
-import { readUserData, writeUserData } from "../../index.js";
+import { readUserData } from "../../index.js";
 
 export const buySnipe = (scene) => {
   scene.enter((ctx) => {
@@ -15,7 +14,7 @@ export const buySnipe = (scene) => {
       });
   });
 
-  scene.on("text", (ctx) => {
+  scene.on("text", async (ctx) => {
     const input = ctx.message.text;
     if (String(input) === "/start") {
       ctx.scene.enter("start");
@@ -25,25 +24,27 @@ export const buySnipe = (scene) => {
 
       if (isContracts) {
         const userId = ctx.from.id;
-        const userData = readUserData();
-        if (!userData.users[userId]) {
-          userData.users[userId] = { tokens: [] };
-        }
+        const user = await readUserData(userId);
 
-        if (userData.users[userId].tokens.length > 0) {
-          userData.users[userId].tokens[0].buySnipe = String(input);
-        } else {
-          userData.users[userId].tokens.push({ buySnipe: String(input) });
+        try {
+          user.tokens[0].buySnipe = String(input);
+          await user.save();
+          ctx.reply("Input saved", {
+            reply_to_message_id: ctx.session.lastMessageId,
+          });
+        } catch (error) {
+          console.error("Error updating contract:", error);
+          ctx
+            .reply("Please enter a valid ETH address!.", {
+              reply_to_message_id: ctx.session.lastMessageId,
+            })
+            .then((sentMessage) => {
+              ctx.session.lastMessageId = sentMessage.message_id;
+            });
         }
-        writeUserData(userData);
-        ctx.reply("Input saved", {
-          reply_to_message_id: ctx.session.lastMessageId,
-        });
-        // Add any further processes here
-        //setTimeout(() => ctx.scene.enter("start"), 1500);
       } else {
         ctx
-          .reply("Please ener a valid ETH address!.", {
+          .reply("Please enter a valid ETH address!", {
             reply_to_message_id: ctx.session.lastMessageId,
           })
           .then((sentMessage) => {

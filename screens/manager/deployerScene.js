@@ -1,5 +1,5 @@
 import isValidPrivateKey from "../../hooks/isValidPrivateKey.js";
-import { readUserData, writeUserData } from "../../index.js";
+import { readUserData } from "../../index.js";
 
 export const deployerScene = (scene) => {
   scene.enter((ctx) => {
@@ -30,39 +30,28 @@ export const deployerScene = (scene) => {
       const userId = ctx.from.id;
 
       if (isPrivateKey) {
-        const userData = readUserData();
-        if (!userData.users[userId]) {
-          userData.users[userId] = { tokens: [] };
+        const userId = ctx.from.id;
+        const user = await readUserData(userId);
+
+        try {
+          user.tokens[0].deployerKey = String(input);
+          await user.save();
+          ctx.reply("Input saved", {
+            reply_to_message_id: ctx.session.lastMessageId,
+          });
+        } catch (error) {
+          console.error("Error updating deployerKey:", error);
+          ctx
+            .reply("Invalid private key!.", {
+              reply_to_message_id: ctx.session.lastMessageId,
+            })
+            .then((sentMessage) => {
+              ctx.session.lastMessageId = sentMessage.message_id;
+            });
         }
-
-        if (userData.users[userId].tokens.length > 0) {
-          userData.users[userId].tokens[0].deployerKey = String(input);
-        } else {
-          userData.users[userId].tokens.push({ deployerKey: String(input) });
-        }
-
-        // const tokenIndex = userData.users[userId].tokens.findIndex(
-        //   (token) => token.deployerKey === newToken.address
-        // );
-
-        // if (tokenIndex !== -1) {
-        //   // Update existing token
-        //   userData.users[userId].tokens[tokenIndex] = newToken;
-        // } else {
-        //   // Add new token
-        //   userData.users[userId].tokens.push(newToken);
-        // }
-
-        writeUserData(userData);
-
-        ctx.reply("Correct private key!", {
-          reply_to_message_id: ctx.session.lastMessageId,
-        });
-        // Add any further processes here
-        // setTimeout(() => ctx.scene.enter("start"), 1500);
       } else {
         ctx
-          .reply("Invalid private key", {
+          .reply("Invalid private key!.", {
             reply_to_message_id: ctx.session.lastMessageId,
           })
           .then((sentMessage) => {

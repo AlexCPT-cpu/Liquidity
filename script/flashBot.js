@@ -10,7 +10,6 @@ import {
   WETH9,
 } from "../json/UniswapV2Json.js";
 import { provider } from "../helpers/providers.js";
-import { error } from "console";
 
 const flashBot = async (
   baseToken,
@@ -156,7 +155,7 @@ const flashBot = async (
     if (bundleResolution === FlashbotsBundleResolution.BundleIncluded) {
       console.log(`Congrats, included in ${blockNumber + 1}`);
       console.log(`${JSON.stringify(simulation, null, 2)}`);
-      return simulation;
+      return `${JSON.stringify(simulation, null, 2)}`;
     } else if (
       bundleResolution === FlashbotsBundleResolution.BlockPassedWithoutInclusion
     ) {
