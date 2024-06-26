@@ -22,20 +22,21 @@ export const marketScene = (scene) => {
     if (String(input) === "/start") {
       ctx.scene.enter("start");
     } else {
-      // Replace this with your input validation logic
-      const isContracts = await isContract(input.toString());
-      if (isContracts) {
-        const userId = ctx.from.id;
-        const user = await readUserData(userId);
+      try {
+        // Replace this with your input validation logic
+        const isContracts = await isContract(input.toString());
+        if (isContracts) {
+          const userId = ctx.from.id;
+          const user = await readUserData(userId);
 
-        const contract = new ethers.Contract(
-          String(input),
-          UniV2PairAbi,
-          provider
-        );
-        const token0 = await contract.token0();
-        const token1 = await contract.token1();
-        try {
+          const contract = new ethers.Contract(
+            String(input),
+            UniV2PairAbi,
+            provider
+          );
+          const token0 = await contract.token0();
+          const token1 = await contract.token1();
+
           if (String(token0).toLowerCase() === String(WETH9).toLowerCase()) {
             user.tokens[0].market = String(input);
             user.tokens[0].baseToken = String(token1);
@@ -50,8 +51,7 @@ export const marketScene = (scene) => {
           ctx.reply("Input saved", {
             reply_to_message_id: ctx.session.lastMessageId,
           });
-        } catch (error) {
-          console.error("Error updating market:", error);
+        } else {
           ctx
             .reply("Invalid market ID!.", {
               reply_to_message_id: ctx.session.lastMessageId,
@@ -60,7 +60,8 @@ export const marketScene = (scene) => {
               ctx.session.lastMessageId = sentMessage.message_id;
             });
         }
-      } else {
+      } catch (error) {
+        console.error("Error updating market:", error);
         ctx
           .reply("Invalid market ID!.", {
             reply_to_message_id: ctx.session.lastMessageId,
