@@ -4,5 +4,5 @@ node_modules
 .env
 /.ev
 
-vercel.json
+
 .vercel
