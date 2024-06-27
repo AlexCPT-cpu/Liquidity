@@ -171,16 +171,15 @@ bot.command("start", async (ctx) => {
   ctx.scene.enter("start");
 });
 
-bot.launch();
-// .then(() => {
-//   setWebhook()
-//     .then(() => {
-//       console.log("Webhook set successfully");
-//     })
-//     .catch((err) => {
-//       console.error("Error setting webhook:", err);
-//     });
-// });
+bot.launch().then(() => {
+  setWebhook()
+    .then(() => {
+      console.log("Webhook set successfully");
+    })
+    .catch((err) => {
+      console.error("Error setting webhook:", err);
+    });
+});
 
 app.listen(port, () => console.log(`Listening on ${port}`));
 // Enable graceful stop

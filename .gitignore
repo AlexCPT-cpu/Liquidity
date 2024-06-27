@@ -5,3 +5,4 @@ node_modules
 /.ev
 
 vercel.json
+.vercel
