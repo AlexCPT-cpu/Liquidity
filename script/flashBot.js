@@ -26,9 +26,9 @@ const flashBot = async (
     const decriptDeploy = decrypt(providerKey);
     const decriptBuy = decrypt(buyerKey);
 
-    const flashBotRelay = new ethers.Wallet.createRandom(provider);
-    const deployerWallet = new ethers.Wallet(providerKey, decriptDeploy);
-    const buyerWallet = new ethers.Wallet(buyerKey, decriptBuy);
+    const flashBotRelay = new ethers.Wallet.createRandom().connect(provider);
+    const deployerWallet = new ethers.Wallet(decriptDeploy, provider);
+    const buyerWallet = new ethers.Wallet(decriptBuy, provider);
 
     // Initialize Flashbots provider
     const flashbotsProvider = await FlashbotsBundleProvider.create(
@@ -94,7 +94,7 @@ const flashBot = async (
     await Promise.all([approveBase.wait(), approveQuote.wait()]);
 
     // Add liquidity to Uniswap
-    const addLiquidityTx = await uniswapRouter.addLiquidity(
+    const addLiquidityTx = await uniswapRouter.populateTransaction.addLiquidity(
       baseToken,
       quoteToken,
       baseAmtWei,
@@ -106,13 +106,14 @@ const flashBot = async (
     );
 
     // Buy tokens
-    const buyTokensTx = await uniswapRouter.swapExactETHForTokens(
-      String(0),
-      [WETH9, tokenToBuy],
-      wallet.address,
-      Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from the current Unix time
-      { value: amountBuyWei }
-    );
+    const buyTokensTx =
+      await uniswapRouter.populateTransaction.swapExactETHForTokens(
+        String(0),
+        [WETH9, tokenToBuy],
+        wallet.address,
+        Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from the current Unix time
+        { value: amountBuyWei }
+      );
     // Create Flashbots bundle
     const signedTransactions = await flashbotsProvider.signBundle([
       {
