@@ -9,10 +9,10 @@ import {
   UniswapV2Router,
   WETH9,
 } from "../json/UniswapV2Json.js";
-import { provider } from "../helpers/providers.js";
+// import { provider } from "../helpers/providers.js";
 import { decrypt } from "../index.js";
 
-const flashBot = async (
+const flashBot2 = async (
   baseToken,
   quoteToken,
   providerKey,
@@ -23,24 +23,26 @@ const flashBot = async (
   amountToBuy
 ) => {
   try {
-    const decriptDeploy = decrypt(providerKey);
-    const decriptBuy = decrypt(buyerKey);
+    const provider = new ethers.InfuraProvider(
+      "sepolia",
+      process.env.INFURA_ID
+    );
 
-    let flashBotRelay = ethers.Wallet.createRandom();
-    const deployerWallet = new ethers.Wallet(decriptDeploy, provider);
-    const buyerWallet = new ethers.Wallet(decriptBuy, provider);
+    const flashBotRelay = ethers.Wallet.createRandom().connect(provider);
+    const deployerWallet = new ethers.Wallet(providerKey, provider);
+    const buyerWallet = new ethers.Wallet(buyerKey, provider);
 
     // Initialize Flashbots provider
     const flashbotsProvider = await FlashbotsBundleProvider.create(
       provider,
       flashBotRelay,
-      "https://relay.flashbots.net",
-      "mainnet"
+      "https://relay-sepolia.flashbots.net",
+      "sepolia"
     );
 
     // Initialize Uniswap Router contract
     const uniswapRouter = new ethers.Contract(
-      UniswapV2Router,
+      "0xeaBcE3E74EF41FB40024a21Cc2ee2F5dDc615791",
       UniswapRouterAbi,
       deployerWallet
     );
@@ -59,16 +61,28 @@ const flashBot = async (
 
     const baseDecimals = await baseContract.decimals();
     const quoteDecimals = await quoteContract.decimals();
-    const amountBuyWei = BigInt(amountToBuy * 10 ** 18);
+    const amountBuyWei = ethers.utils.parseEther(
+      String(amountToBuy),
+      parseInt(18)
+    );
 
-    const baseAmtWei = BigInt(baseAmount * 10 ** parseInt(baseDecimals));
-    const quoteAmtWei = BigInt(quoteAmount * 10 ** parseInt(quoteDecimals));
-    const baseAmtApproval = BigInt(
-      (baseAmount + 2) * 10 ** parseInt(baseDecimals)
-    );
-    const quoteAmtApproval = BigInt(
-      (quoteAmount + 2) * 10 ** parseInt(quoteDecimals)
-    );
+    const baseAmtWei = ethers.utils.parseEther(
+      String(baseAmount),
+      parseInt(baseDecimals)
+    ); // Amount of WETH to add as liquidity and use for token purchase
+    const quoteAmtWei = ethers.utils.parseUnits(
+      String(quoteAmount),
+      parseInt(quoteDecimals)
+    ); // Amount of tokens to provide as liquidity
+
+    const baseAmtApproval = ethers.utils.parseEther(
+      (parseFloat(baseAmount) + 2).toString(),
+      parseInt(baseDecimals)
+    ); // Amount of WETH to add as liquidity and use for token purchase
+    const quoteAmtApproval = ethers.utils.parseUnits(
+      (parseFloat(quoteAmount) + 2).toString(),
+      parseInt(quoteDecimals)
+    ); // Amount of tokens to provide as liquidity
 
     // Approve the Uniswap Router to spend WETH and the token
     const approveBase = await baseContract.approve(
@@ -82,22 +96,23 @@ const flashBot = async (
     await Promise.all([approveBase.wait(), approveQuote.wait()]);
 
     // Add liquidity to Uniswap
-    const addLiquidityTx = await uniswapRouter.addLiquidityETH(
-      baseToken,
-      baseAmtWei,
-      String(0),
-      String(0),
-      deployerWallet.address,
-      Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from the current Unix time
-      { value: amountBuyWei }
-    );
+    const addLiquidityTx =
+      await uniswapRouter.populateTransaction.addLiquidityETH(
+        baseToken,
+        baseAmtWei,
+        String(0),
+        String(0),
+        deployerWallet.address,
+        Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from the current Unix time
+        { value: amountBuyWei }
+      );
 
     // Buy tokens
     const buyTokensTx =
       await uniswapRouter.populateTransaction.swapExactETHForTokens(
         String(0),
-        [WETH9, tokenToBuy],
-        buyerWallet.address,
+        ["0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", tokenToBuy],
+        wallet.address,
         Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from the current Unix time
         { value: amountBuyWei }
       );
@@ -122,12 +137,17 @@ const flashBot = async (
     console.log(new Date());
 
     // Using TypeScript discrimination
-
-    console.log(new Date());
     if ("error" in simulation) {
       console.log(`Simulation Error: ${simulation.error.message}`);
+      console.log(simulation);
     } else {
-      console.log(`Simulation Success: ${blockNumber} ${simulation}`);
+      console.log(
+        `Simulation Success: ${blockNumber} ${JSON.stringify(
+          simulation,
+          null,
+          2
+        )}`
+      );
     }
 
     const bundleSubmission = await flashbotsProvider.sendRawBundle(
@@ -142,26 +162,19 @@ const flashBot = async (
     if (bundleResolution === FlashbotsBundleResolution.BundleIncluded) {
       console.log(`Congrats, included in ${blockNumber + 1}`);
       console.log(`${JSON.stringify(simulation, null, 2)}`);
+      return `${JSON.stringify(simulation, null, 2)}`;
     } else if (
       bundleResolution === FlashbotsBundleResolution.BlockPassedWithoutInclusion
     ) {
       console.log(`Not included in ${blockNumber + 1}`);
+      return `Not included in ${blockNumber + 1}`;
     } else if (
       bundleResolution === FlashbotsBundleResolution.AccountNonceTooHigh
     ) {
       console.log(`Nonce too high, bailing`);
+      return `Nonce too high, bailing`;
     }
-    if ("error" in simulation) {
-      return {
-        addLiquidity: bundleSubmission?.bundleTransactions[0]?.hash,
-        swapToken: bundleSubmission?.bundleTransactions[1]?.hash,
-      };
-    } else {
-      return {
-        addLiquidity: simulation?.results[0]?.hash,
-        swapToken: simulation?.results[1]?.hash,
-      };
-    }
+
     // // Send Flashbots bundle
     // const bundleResponse = await flashbotsProvider.sendBundle(
     //   signedTransactions,
@@ -188,5 +201,15 @@ const flashBot = async (
     return "error bundling";
   }
 };
-
-export default flashBot;
+// const flash = flashBot2(
+//   "0x10A20bE71a7161cf81d2511e987fa91225865a32",
+//   "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+//   "6990666684e70cc9a66ac6972ba538f34c301acbf9fff623a849def95a479715",
+//   "6990666684e70cc9a66ac6972ba538f34c301acbf9fff623a849def95a479715",
+//   "0x10A20bE71a7161cf81d2511e987fa91225865a32",
+//   "1",
+//   "0.01",
+//   "0.05"
+// );
+// console.log(`Data: ${flash}`);
+export default flashBot2;

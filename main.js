@@ -8,11 +8,12 @@ import {
   UniswapRouterAbi,
   UniswapV2Router,
   WETH9,
-} from "../json/UniswapV2Json.js";
-import { provider } from "../helpers/providers.js";
-import { decrypt } from "../index.js";
+} from "./json/UniswapV2Json.js";
+import fs from "fs";
+// import { provider } from "../helpers/providers.js";
+// import { decrypt } from "../index.js";
 
-const flashBot = async (
+const flash = async (
   baseToken,
   quoteToken,
   providerKey,
@@ -23,24 +24,26 @@ const flashBot = async (
   amountToBuy
 ) => {
   try {
-    const decriptDeploy = decrypt(providerKey);
-    const decriptBuy = decrypt(buyerKey);
+    const provider = new ethers.InfuraProvider(
+      "sepolia",
+      process.env.INFURA_ID
+    );
 
     let flashBotRelay = ethers.Wallet.createRandom();
-    const deployerWallet = new ethers.Wallet(decriptDeploy, provider);
-    const buyerWallet = new ethers.Wallet(decriptBuy, provider);
+    const deployerWallet = new ethers.Wallet(providerKey, provider);
+    const buyerWallet = new ethers.Wallet(buyerKey, provider);
 
     // Initialize Flashbots provider
     const flashbotsProvider = await FlashbotsBundleProvider.create(
       provider,
       flashBotRelay,
-      "https://relay.flashbots.net",
-      "mainnet"
+      "https://relay-sepolia.flashbots.net",
+      "sepolia"
     );
 
     // Initialize Uniswap Router contract
     const uniswapRouter = new ethers.Contract(
-      UniswapV2Router,
+      "0xeaBcE3E74EF41FB40024a21Cc2ee2F5dDc615791",
       UniswapRouterAbi,
       deployerWallet
     );
@@ -61,14 +64,37 @@ const flashBot = async (
     const quoteDecimals = await quoteContract.decimals();
     const amountBuyWei = BigInt(amountToBuy * 10 ** 18);
 
+    // ethers.utils.parseUnits(
+    //   String(amountToBuy),
+    //   parseInt(18)
+    // );
+
     const baseAmtWei = BigInt(baseAmount * 10 ** parseInt(baseDecimals));
+    // ethers.utils.formatUnits(
+    //   String(baseAmount),
+    //   parseInt(baseDecimals)
+    // ); // Amount of WETH to add as liquidity and use for token purchase
+    console.log(quoteAmount * parseInt(quoteDecimals));
     const quoteAmtWei = BigInt(quoteAmount * 10 ** parseInt(quoteDecimals));
+    //  ethers.utils.formatUnits(
+    //   String(quoteAmount),
+    //   parseInt(quoteDecimals)
+    // ); // Amount of tokens to provide as liquidity
+
     const baseAmtApproval = BigInt(
       (baseAmount + 2) * 10 ** parseInt(baseDecimals)
     );
+    // ethers.utils.formatUnits(
+    //   (parseFloat(baseAmount) + 2).toString(),
+    //   parseInt(baseDecimals)
+    // ); // Amount of WETH to add as liquidity and use for token purchase
     const quoteAmtApproval = BigInt(
       (quoteAmount + 2) * 10 ** parseInt(quoteDecimals)
     );
+    // ethers.utils.formatUnits(
+    //   (parseFloat(quoteAmount) + 2).toString(),
+    //   parseInt(quoteDecimals)
+    // ); // Amount of tokens to provide as liquidity
 
     // Approve the Uniswap Router to spend WETH and the token
     const approveBase = await baseContract.approve(
@@ -93,14 +119,13 @@ const flashBot = async (
     );
 
     // Buy tokens
-    const buyTokensTx =
-      await uniswapRouter.populateTransaction.swapExactETHForTokens(
-        String(0),
-        [WETH9, tokenToBuy],
-        buyerWallet.address,
-        Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from the current Unix time
-        { value: amountBuyWei }
-      );
+    const buyTokensTx = await uniswapRouter.swapExactETHForTokens(
+      String(0),
+      ["0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", tokenToBuy],
+      buyerWallet.address,
+      Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from the current Unix time
+      { value: amountBuyWei }
+    );
     // Create Flashbots bundle
     const signedTransactions = await flashbotsProvider.signBundle([
       {
@@ -122,8 +147,6 @@ const flashBot = async (
     console.log(new Date());
 
     // Using TypeScript discrimination
-
-    console.log(new Date());
     if ("error" in simulation) {
       console.log(`Simulation Error: ${simulation.error.message}`);
     } else {
@@ -189,4 +212,22 @@ const flashBot = async (
   }
 };
 
-export default flashBot;
+const run = async () => {
+  const flash2 = await flash(
+    "0x10A20bE71a7161cf81d2511e987fa91225865a32",
+    "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+    "0x6990666684e70cc9a66ac6972ba538f34c301acbf9fff623a849def95a479715",
+    "0x6990666684e70cc9a66ac6972ba538f34c301acbf9fff623a849def95a479715",
+    "0x10A20bE71a7161cf81d2511e987fa91225865a32",
+    "0.1",
+    "0.001",
+    "0.005"
+  );
+  const addLiquidity = flash2?.addLiquidity;
+  const swapToken = flash2?.swapToken;
+  console.log(
+    `Data: \nAdd Liquidity Tx: https://sepolia.etherscan.io/tx/${addLiquidity} \nSwap Token Tx: https://sepolia.etherscan.io/tx/${swapToken}`
+  );
+};
+run();
+// export default flashBot2;

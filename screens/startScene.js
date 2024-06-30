@@ -4,7 +4,7 @@ import { clearUserTokens, decrypt, readUserData } from "../index.js";
 function startScene(scene) {
   scene.enter(async (ctx) => {
     const userContext = await readUserData(ctx.from.id);
-    const user = userContext.tokens[0];
+    const user = userContext?.tokens[0];
     ctx.reply(
       `Please provide all the required information.\n\n${
         user?.deployerKey ? "✅" : "📦"
@@ -12,7 +12,7 @@ function startScene(scene) {
         user?.buyerKey ? "✅" : "📦"
       } <b>Buyer wallet: ${user?.deployerKey ? "Provided" : ""}</b> \n\n${
         user?.market ? "✅" : "📦"
-      } <b>Market ID: ${
+      } <b>Pair ID: ${
         user?.market ? truncateEthAddress(String(user?.market)) : ""
       }</b> \n${user?.baseToken ? "✅" : "📦"} <b>Base token: ${
         user?.baseToken ? truncateEthAddress(String(user?.baseToken)) : ""
@@ -43,7 +43,7 @@ function startScene(scene) {
             ],
             [
               {
-                text: "➕ Market ID",
+                text: "➕ Pair ID",
                 callback_data: "market",
               },
             ],

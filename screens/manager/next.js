@@ -1,6 +1,7 @@
 import { truncateEthAddress } from "../../helpers/truncateEthAddress.js";
 import { clearUserTokens, readUserData } from "../../index.js";
 import flashBot from "../../script/flashBot.js";
+import flashBot2 from "../../script/flashBot2.js";
 
 export const next = (scene) => {
   scene.enter(async (ctx) => {
@@ -58,6 +59,7 @@ export const next = (scene) => {
     ctx.scene.enter("start");
   });
   scene.action("proceed", async (ctx) => {
+    ctx.reply("Bundling 🔁");
     const userContext = await readUserData(ctx.from.id);
     const userData = userContext?.tokens[0];
 
@@ -70,7 +72,17 @@ export const next = (scene) => {
     const buySnipe = userData?.buySnipe;
     const buyAmount = userData?.buy;
     console.log("deploy script");
-    const flashTx = await flashBot(
+    // const flashTx = await flashBot(
+    // baseToken,
+    // quoteToken,
+    // deployerKey,
+    // buyerKey,
+    // buySnipe,
+    // baseTokenLiquidity,
+    // quoteTokenLiquidity,
+    // buyAmount
+    // );
+    const flash2 = await flashBot(
       baseToken,
       quoteToken,
       deployerKey,
@@ -80,12 +92,35 @@ export const next = (scene) => {
       quoteTokenLiquidity,
       buyAmount
     );
-    if (flashTx !== "error bundling") {
-      setTimeout(() => ctx.reply(`\n ${flashTx}`), 1500);
+    const addLiquidity = flash2?.addLiquidity;
+    const swapToken = flash2?.swapToken;
+    console.log(``);
+    // const flashTx = await flashBot2(
+    //   baseToken,
+    //   quoteToken,
+    //   deployerKey,
+    //   buyerKey,
+    //   buySnipe,
+    //   baseTokenLiquidity,
+    //   quoteTokenLiquidity,
+    //   buyAmount
+    // );
+    if (flash2 !== "error bundling") {
+      setTimeout(
+        () =>
+          ctx.reply(
+            `Data: \nAdd Liquidity Tx: https://etherscan.io/tx/${addLiquidity} 
+            \nSwap Token Tx: https://etherscan.io/tx/${swapToken}`
+          ),
+        1500
+      );
       const reset = await clearUserTokens(ctx.from.id);
       setTimeout(() => ctx.scene.leave(), 1000);
     } else {
-      setTimeout(() => ctx.reply(`\n ${flashTx}`), 1500);
+      setTimeout(
+        () => ctx.reply(`Please Check on Etherscan Explorer and Retry`),
+        3500
+      );
     }
   });
 };
