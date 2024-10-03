@@ -130,7 +130,7 @@ const resetScene = new Scenes.BaseScene("resetScene");
 const nextScene = new Scenes.BaseScene("nextScene");
 
 const sceneManager = useScene();
-
+// that long
 // Start scene handlers
 startScreen(startScenes);
 sceneManager.buyer(buyerScene);
